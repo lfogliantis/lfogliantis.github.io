@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js">
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAqP3Bea3RCdjw5r7FFlUh1mCLoH7xz7o8&callback=initMap">
+    </script>
+
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Kontakt Map</title>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      console.log("start");
+
+      function initMap() {
+        var infoWindow = new google.maps.InfoWindow();
+
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 6,
+          maxZoom:10,
+          minZoom:2,
+          center: {lat: 41.9028, lng: 12.4964}
+        });
+
+        // Add some markers to the map.
+        // Note: The code uses the JavaScript Array.prototype.map() method to
+        // create an array of markers based on a given "locations" array.
+        // The map() method here has nothing to do with the Google Maps API.
+        var markers = locations.map(function(location, i) {
+          return new google.maps.Marker({
+            position: new google.maps.LatLng(location["center lat"], location["center lng"]),
+            //pos: {"lat":parseFloat(location["center lat"]),"lng":parseFloat(location["center lng"])},
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 5
+            },
+            title: JSON.stringify({"age":location["age"],"gender":location["gender"],"multiplier":location["count"]/2})
+          });
+        });
+
+        // Add a marker clusterer to manage the markers.
+        var markerCluster = new MarkerClusterer(map, markers,
+            {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m',
+             zoomOnClick:false});
+        markerCluster.setCalculator(function(markers, numStyles,locations) {
+              var imported = 0;
+              for (i=0;i<markers.length;i++){
+                imported += parseFloat(JSON.parse(markers[i].getTitle())["multiplier"]);
+              }
+
+              var avgImported = Math.round(imported);//markers.length;
+              var index = 0;
+              var count = (avgImported).toString();
+
+              var dv = count;
+              while (dv !== 0) {
+                dv = parseInt(dv / 10, 10);
+                index++;
+              }
+
+              index = Math.min(index, numStyles);
+              return {
+                text: count,
+                index: index,
+                title: count
+              };
+        });
+
+
+        google.maps.event.addListener(markerCluster, 'clusterclick', function(cluster) {
+
+          var markers_ = cluster.getMarkers();
+
+          var array = [];
+          var num = 0;
+
+          for (i = 0; i < markers_.length; i++) {
+            num++;
+            array.push(JSON.parse(markers_[i].getTitle()));
+          }
+
+          var outgender = 0;
+          var outage = 0;
+          var uniqueArray = [];
+          var uniqueOutage = 0;
+          var totcount = 0;
+          for (i = 0; i<array.length;i++){
+            totcount += parseFloat(array[i]["multiplier"]);
+            var ithage = parseFloat(array[i]["age"]);
+            outgender = outgender + parseFloat(array[i]["gender"]);
+            outage = outage + ithage;
+            if (uniqueArray.includes(ithage) == false){
+              uniqueArray.push(ithage);
+              uniqueOutage += ithage
+            }
+          }
+          //outage = Math.round((outage/array.length + uniqueOutage/uniqueArray.length)*10)/20;
+          outage = Math.round(outage/array.length*10)/10;
+          var outmales = Math.round(outgender/array.length*10)/10;
+          var outfemales = Math.round((100-outmales)*10)/10;
+          infoWindow.setContent(totcount + " followers in this area:<br>" + "<b>"+outage+"</b>" + " average age<br>" + "<b>"+outmales+"</b>" + "% males<br>" + "<b>"+outfemales+"</b>" + "% females");
+          infoWindow.setPosition(cluster.getCenter());
+          infoWindow.open(map);
+        });
+
+        for (i = 0; i < markers.length; i++) {
+          var marker = markers[i];
+
+          google.maps.event.addListener(marker, 'click', (function(marker) {
+            return function() {
+              infoWindow.setContent(this.getTitle());
+              infoWindow.open(map, this);
+            }
+          })(marker));
+        }
+      }
+
+
+      var locations = [];
+      var json_url = "https://www.jasonbase.com/things/JBpm.json";
+
+      $.getJSON(json_url, function(data){
+        console.log("loading");
+        for (k in data){
+          var j = 0;
+          while (j<2){
+            locations.push(data[k]);
+            j+=1;
+          }
+        }
+        initMap();
+        console.log("done");
+      });
+
+    </script>
+  </body>
+</html>
